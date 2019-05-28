@@ -16,7 +16,7 @@ Then simply add the `watchservice-ktx` dependency
 
 ```kotlin
 dependencies {
-    compile("com.github.vishna:watchservice-ktx:master-SNAPSHOT")
+  compile("com.github.vishna:watchservice-ktx:master-SNAPSHOT")
 }
 ```
 
@@ -26,6 +26,12 @@ dependencies {
 val currentDirectory  = File(System.getProperty("user.dir"))
 
 val watchChannel = currentDirectory.asWatchChannel()
+
+launch {
+  watchChannel.consumeEach { event ->
+    // do something with event
+  }
+}
 ```
 
 For more documentation on API see [watchservice.kt](https://github.com/vishna/watchservice-ktx/blob/master/src/main/kotlin/dev/vishna/watchservice/watchservice.kt)
