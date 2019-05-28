@@ -32,6 +32,9 @@ launch {
     // do something with event
   }
 }
+
+// once you no longer need this channel, make sure you close it
+watchChannel.close()
 ```
 
 For more documentation on API see [watchservice.kt](https://github.com/vishna/watchservice-ktx/blob/master/src/main/kotlin/dev/vishna/watchservice/watchservice.kt)
