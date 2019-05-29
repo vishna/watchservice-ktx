@@ -81,7 +81,7 @@ class KWatchChannel(
 
     init {
         // commence emitting events from channel
-        var monitorKey: WatchKey?
+
         scope.launch(Dispatchers.IO) {
 
             // sending channel initalization event
@@ -102,9 +102,9 @@ class KWatchChannel(
                     shouldRegisterPath = false
                 }
 
-                monitorKey = watchService.take()
-                val dirPath = monitorKey?.watchable() as Path? ?: break
-                monitorKey?.pollEvents()?.forEach {
+                val monitorKey = watchService.take()
+                val dirPath = monitorKey.watchable() as? Path ?: break
+                monitorKey.pollEvents().forEach {
                     val eventPath = dirPath.resolve(it.context() as Path)
 
                     val eventType = when(it.kind()) {
@@ -128,8 +128,8 @@ class KWatchChannel(
                     channel.send(event)
                 }
 
-                val valid = monitorKey?.reset()
-                if (valid != true) {
+                if (!monitorKey.reset()) {
+                    monitorKey.cancel()
                     close()
                     break
                 }
