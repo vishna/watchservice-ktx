@@ -1,7 +1,6 @@
 package dev.vishna.watchservice
 
 import kotlinx.coroutines.channels.consumeEach
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.amshove.kluent.`should be equal to`
@@ -19,13 +18,14 @@ class WatchServiceTests {
 
             watchChannel.isClosedForSend `should be equal to` false
             watchChannel.data `should be` null
-            watchChannel.path `should be` currentDirectory.toPath()
+            watchChannel.file.absolutePath `should be equal to` currentDirectory.absolutePath
             watchChannel.subtree `should be` true
 
             launch {
                 watchChannel.consumeEach { event ->
                     // there is always the first event triggered and here we only test that
-                    event.type `should be` KWatchEvent.Kind.initalized
+                    event.kind `should be` KWatchEvent.Kind.initalized
+                    event.file.absolutePath `should be equal to` currentDirectory.absolutePath
                 }
             }
 

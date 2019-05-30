@@ -23,23 +23,10 @@ fun File.asWatchChannel(
     subtree: Boolean = true,
     data: Any? = null,
     scope: CoroutineScope = GlobalScope
-): KWatchChannel {
-    return if (isFile) {
-        parentFile
-    } else {
-        this
-    }.toPath().asWatchChannel(subtree, data, scope)
-}
-
-/**
- * subtree - whether or not changes in recursive directories should be monitored
- * data - any kind of data that should be associated with this channel (e.g tag, marker)
- * scope - coroutine context for the channel
- */
-fun Path.asWatchChannel(subtree: Boolean = true, data: Any? = null, scope: CoroutineScope = GlobalScope) = KWatchChannel(
-    path = this,
-    subtree = subtree,
+) = KWatchChannel(
+    file = this,
     scope = scope,
+    subtree = subtree,
     data = data
 )
 
@@ -47,7 +34,7 @@ fun Path.asWatchChannel(subtree: Boolean = true, data: Any? = null, scope: Corou
  * Coroutine channel based wrapper for Java's WatchService
  */
 class KWatchChannel(
-    val path: Path,
+    val file: File,
     val scope: CoroutineScope = GlobalScope,
     val subtree: Boolean = false,
     val data: Any? = null,
@@ -57,6 +44,8 @@ class KWatchChannel(
     private val watchService: WatchService = FileSystems.getDefault().newWatchService()
     private var closed : Boolean = false
     private val registeredKeys = ArrayList<WatchKey>()
+    private val path: Path
+    private val isSingleFile: Boolean = file.isFile
 
     /**
      * Registers this channel to watch any changes in path directory and its subdirectories
@@ -70,7 +59,7 @@ class KWatchChannel(
         if (subtree) {
             Files.walkFileTree(path, object : SimpleFileVisitor<Path>() {
                 override fun preVisitDirectory(subPath: Path, attrs: BasicFileAttributes): FileVisitResult {
-                    registeredKeys += subPath.register(watchService, ENTRY_CREATE, ENTRY_MODIFY)
+                    registeredKeys += subPath.register(watchService, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
                     return FileVisitResult.CONTINUE
                 }
             })
@@ -80,16 +69,22 @@ class KWatchChannel(
     }
 
     init {
-        // commence emitting events from channel
+        // figure out if we should watch directory and its subtree or a single file
+        path = if (isSingleFile) {
+            file.parentFile
+        } else {
+            file
+        }.toPath()
 
+        // commence emitting events from channel
         scope.launch(Dispatchers.IO) {
 
             // sending channel initalization event
             channel.send(
                 KWatchEvent(
-                    path = path,
+                    file = path.toFile(),
                     data = data,
-                    type = KWatchEvent.Kind.initalized,
+                    kind = KWatchEvent.Kind.initalized,
                     isDirectory = true
                 ))
 
@@ -114,14 +109,14 @@ class KWatchChannel(
                     }
 
                     val event = KWatchEvent(
-                        path = eventPath,
+                        file = eventPath.toFile(),
                         data = data,
-                        type = eventType,
+                        kind = eventType,
                         isDirectory = eventPath.toFile().isDirectory
                     )
 
                     // if any folder is created or deleted... and we watch subtree we should reregister the whole tree
-                    if (subtree && event.isDirectory && event.type in listOf(KWatchEvent.Kind.created, KWatchEvent.Kind.deleted)) {
+                    if (subtree && event.isDirectory && event.kind in listOf(KWatchEvent.Kind.created, KWatchEvent.Kind.deleted)) {
                         shouldRegisterPath = true
                     }
 
@@ -159,12 +154,12 @@ data class KWatchEvent(
     /**
      * Abolute path of modified folder/file
      */
-    val path: Path,
+    val file: File,
 
     /**
      * Kind of file system event
      */
-    val type: Kind,
+    val kind: Kind,
 
     /**
      * Optional extra data that should be associated with this event
