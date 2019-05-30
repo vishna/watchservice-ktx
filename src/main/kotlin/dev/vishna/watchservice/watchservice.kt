@@ -56,7 +56,7 @@ class KWatchChannel(
             forEach { it.cancel() }
             clear()
         }
-        if (subtree) {
+        if (subtree && !isSingleFile) {
             Files.walkFileTree(path, object : SimpleFileVisitor<Path>() {
                 override fun preVisitDirectory(subPath: Path, attrs: BasicFileAttributes): FileVisitResult {
                     registeredKeys += subPath.register(watchService, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
@@ -101,6 +101,10 @@ class KWatchChannel(
                 val dirPath = monitorKey.watchable() as? Path ?: break
                 monitorKey.pollEvents().forEach {
                     val eventPath = dirPath.resolve(it.context() as Path)
+
+                    if (isSingleFile && eventPath.toFile().absolutePath != file.absolutePath) {
+                        return@forEach
+                    }
 
                     val eventType = when(it.kind()) {
                         ENTRY_CREATE -> KWatchEvent.Kind.created
