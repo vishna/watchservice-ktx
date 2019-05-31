@@ -84,7 +84,7 @@ class KWatchChannel(
                 KWatchEvent(
                     file = path.toFile(),
                     data = data,
-                    kind = KWatchEvent.Kind.initalized,
+                    kind = KWatchEvent.Kind.Initalized,
                     isDirectory = true
                 ))
 
@@ -107,9 +107,9 @@ class KWatchChannel(
                     }
 
                     val eventType = when(it.kind()) {
-                        ENTRY_CREATE -> KWatchEvent.Kind.created
-                        ENTRY_DELETE -> KWatchEvent.Kind.deleted
-                        else -> KWatchEvent.Kind.modified
+                        ENTRY_CREATE -> KWatchEvent.Kind.Created
+                        ENTRY_DELETE -> KWatchEvent.Kind.Deleted
+                        else -> KWatchEvent.Kind.Modified
                     }
 
                     val event = KWatchEvent(
@@ -120,7 +120,7 @@ class KWatchChannel(
                     )
 
                     // if any folder is created or deleted... and we watch subtree we should reregister the whole tree
-                    if (subtree && event.isDirectory && event.kind in listOf(KWatchEvent.Kind.created, KWatchEvent.Kind.deleted)) {
+                    if (subtree && event.isDirectory && event.kind in listOf(KWatchEvent.Kind.Created, KWatchEvent.Kind.Deleted)) {
                         shouldRegisterPath = true
                     }
 
@@ -182,22 +182,22 @@ data class KWatchEvent(
         /**
          * Triggered upon initalization of the channel
          */
-        object initalized : Kind("initalized")
+        object Initalized : Kind("initalized")
 
         /**
          * Triggered when file or directory is created
          */
-        object created : Kind("created")
+        object Created : Kind("created")
 
         /**
          * Triggered when file or directory is modified
          */
-        object modified : Kind("modified")
+        object Modified : Kind("modified")
 
         /**
          * Triggered when file or directory is deleted
          */
-        object deleted : Kind("deleted")
+        object Deleted : Kind("deleted")
 
         override fun toString(): String = name
     }
