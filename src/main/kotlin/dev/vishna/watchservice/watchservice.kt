@@ -15,18 +15,18 @@ import java.nio.file.StandardWatchEventKinds.*
  * Watches directory. If file is supplied it will use parent directory. If it's an intent to watch just file,
  * developers must filter for the file related events themselves. 
  *
- * subtree - whether or not changes in recursive directories should be monitored
+ * mode - mode in which we should observe changes, can be SingleFile, SingleDirectory, Recursive
  * data - any kind of data that should be associated with this channel (e.g tag, marker)
  * scope - coroutine context for the channel
  */
 fun File.asWatchChannel(
-    subtree: Boolean = true,
+    mode: KWatchChannel.Mode? = null,
     data: Any? = null,
     scope: CoroutineScope = GlobalScope
 ) = KWatchChannel(
     file = this,
+    mode = mode ?: if (isFile) KWatchChannel.Mode.SingleFile else KWatchChannel.Mode.Recursive,
     scope = scope,
-    subtree = subtree,
     data = data
 )
 
@@ -36,7 +36,7 @@ fun File.asWatchChannel(
 class KWatchChannel(
     val file: File,
     val scope: CoroutineScope = GlobalScope,
-    val subtree: Boolean = false,
+    val mode: Mode,
     val data: Any? = null,
     private var channel: Channel<KWatchEvent> = Channel()
 ) : Channel<KWatchEvent> by channel {
@@ -44,8 +44,11 @@ class KWatchChannel(
     private val watchService: WatchService = FileSystems.getDefault().newWatchService()
     private var closed : Boolean = false
     private val registeredKeys = ArrayList<WatchKey>()
-    private val path: Path
-    private val isSingleFile: Boolean = file.isFile
+    private val path: Path = if (file.isFile) {
+        file.parentFile
+    } else {
+        file
+    }.toPath()
 
     /**
      * Registers this channel to watch any changes in path directory and its subdirectories
@@ -56,7 +59,7 @@ class KWatchChannel(
             forEach { it.cancel() }
             clear()
         }
-        if (subtree && !isSingleFile) {
+        if (mode == Mode.Recursive) {
             Files.walkFileTree(path, object : SimpleFileVisitor<Path>() {
                 override fun preVisitDirectory(subPath: Path, attrs: BasicFileAttributes): FileVisitResult {
                     registeredKeys += subPath.register(watchService, ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE)
@@ -70,11 +73,6 @@ class KWatchChannel(
 
     init {
         // figure out if we should watch directory and its subtree or a single file
-        path = if (isSingleFile) {
-            file.parentFile
-        } else {
-            file
-        }.toPath()
 
         // commence emitting events from channel
         scope.launch(Dispatchers.IO) {
@@ -84,8 +82,7 @@ class KWatchChannel(
                 KWatchEvent(
                     file = path.toFile(),
                     data = data,
-                    kind = KWatchEvent.Kind.Initalized,
-                    isDirectory = true
+                    kind = KWatchEvent.Kind.Initalized
                 ))
 
             var shouldRegisterPath = true
@@ -102,7 +99,7 @@ class KWatchChannel(
                 monitorKey.pollEvents().forEach {
                     val eventPath = dirPath.resolve(it.context() as Path)
 
-                    if (isSingleFile && eventPath.toFile().absolutePath != file.absolutePath) {
+                    if (mode == Mode.SingleFile && eventPath.toFile().absolutePath != file.absolutePath) {
                         return@forEach
                     }
 
@@ -115,12 +112,14 @@ class KWatchChannel(
                     val event = KWatchEvent(
                         file = eventPath.toFile(),
                         data = data,
-                        kind = eventType,
-                        isDirectory = eventPath.toFile().isDirectory
+                        kind = eventType
                     )
 
-                    // if any folder is created or deleted... and we watch subtree we should reregister the whole tree
-                    if (subtree && event.isDirectory && event.kind in listOf(KWatchEvent.Kind.Created, KWatchEvent.Kind.Deleted)) {
+                    // if any folder is created or deleted... and we are supposed
+                    // to watch subtree we re-register the whole tree
+                    if (mode == Mode.Recursive &&
+                        event.kind in listOf(KWatchEvent.Kind.Created, KWatchEvent.Kind.Deleted) &&
+                        event.file.isDirectory) {
                         shouldRegisterPath = true
                     }
 
@@ -149,6 +148,27 @@ class KWatchChannel(
 
         return channel.close(cause)
     }
+
+    /**
+     * Describes the mode this channels is running in
+     */
+    sealed class Mode {
+        /**
+         * Watches only the given file
+         */
+        object SingleFile : Mode()
+
+        /**
+         * Watches changes in the given directory, changes in subdirectories will be
+         * ignored
+         */
+        object SingleDirectory : Mode()
+
+        /**
+         * Watches changes in subdirectories
+         */
+        object Recursive : Mode()
+    }
 }
 
 /**
@@ -168,12 +188,7 @@ data class KWatchEvent(
     /**
      * Optional extra data that should be associated with this event
      */
-    val data: Any?,
-
-    /**
-     * Whether or not this event is associated with a directory
-     */
-    val isDirectory: Boolean
+    val data: Any?
 ) {
     /**
      * File system event, wrapper around WatchEvent.Kind

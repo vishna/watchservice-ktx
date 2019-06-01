@@ -19,7 +19,7 @@ class WatchServiceTests {
             watchChannel.isClosedForSend `should be equal to` false
             watchChannel.data `should be` null
             watchChannel.file.absolutePath `should be equal to` currentDirectory.absolutePath
-            watchChannel.subtree `should be` true
+            watchChannel.mode `should be` KWatchChannel.Mode.Recursive
 
             launch {
                 watchChannel.consumeEach { event ->
