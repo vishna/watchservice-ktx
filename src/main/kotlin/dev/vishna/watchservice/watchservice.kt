@@ -15,34 +15,39 @@ import java.nio.file.StandardWatchEventKinds.*
  * Watches directory. If file is supplied it will use parent directory. If it's an intent to watch just file,
  * developers must filter for the file related events themselves. 
  *
- * mode - mode in which we should observe changes, can be SingleFile, SingleDirectory, Recursive
- * data - any kind of data that should be associated with this channel (e.g tag, marker)
- * scope - coroutine context for the channel
+ * @param [mode] - mode in which we should observe changes, can be SingleFile, SingleDirectory, Recursive
+ * @param [tag] - any kind of data that should be associated with this channel
+ * @param [scope] - coroutine context for the channel, optional
  */
 fun File.asWatchChannel(
     mode: KWatchChannel.Mode? = null,
-    data: Any? = null,
+    tag: Any? = null,
     scope: CoroutineScope = GlobalScope
 ) = KWatchChannel(
     file = this,
     mode = mode ?: if (isFile) KWatchChannel.Mode.SingleFile else KWatchChannel.Mode.Recursive,
     scope = scope,
-    data = data
+    tag = tag
 )
 
 /**
- * Coroutine channel based wrapper for Java's WatchService
+ * Channel based wrapper for Java's WatchService
+ *
+ * @param [file] - file or directory that is supposed to be monitored by WatchService
+ * @param [scope] - CoroutineScope in within which Channel's sending loop will be running
+ * @param [mode] - channel can work in one of the three modes: watching a single file,
+ * watching a single directory or watching directory tree recursively
+ * @param [tag] - any kind of data that should be associated with this channel, optional
  */
 class KWatchChannel(
     val file: File,
     val scope: CoroutineScope = GlobalScope,
     val mode: Mode,
-    val data: Any? = null,
-    private var channel: Channel<KWatchEvent> = Channel()
+    val tag: Any? = null,
+    private val channel: Channel<KWatchEvent> = Channel()
 ) : Channel<KWatchEvent> by channel {
 
     private val watchService: WatchService = FileSystems.getDefault().newWatchService()
-    private var closed : Boolean = false
     private val registeredKeys = ArrayList<WatchKey>()
     private val path: Path = if (file.isFile) {
         file.parentFile
@@ -72,8 +77,6 @@ class KWatchChannel(
     }
 
     init {
-        // figure out if we should watch directory and its subtree or a single file
-
         // commence emitting events from channel
         scope.launch(Dispatchers.IO) {
 
@@ -81,13 +84,13 @@ class KWatchChannel(
             channel.send(
                 KWatchEvent(
                     file = path.toFile(),
-                    data = data,
+                    tag = tag,
                     kind = KWatchEvent.Kind.Initalized
                 ))
 
             var shouldRegisterPath = true
 
-            while (!closed) {
+            while (!isClosedForSend) {
 
                 if (shouldRegisterPath) {
                     registerPaths()
@@ -111,7 +114,7 @@ class KWatchChannel(
 
                     val event = KWatchEvent(
                         file = eventPath.toFile(),
-                        data = data,
+                        tag = tag,
                         kind = eventType
                     )
 
@@ -131,7 +134,7 @@ class KWatchChannel(
                     close()
                     break
                 }
-                else if (closed) {
+                else if (isClosedForSend) {
                     break
                 }
             }
@@ -139,8 +142,6 @@ class KWatchChannel(
     }
 
     override fun close(cause: Throwable?): Boolean {
-        closed = true
-
         registeredKeys.apply {
             forEach { it.cancel() }
             clear()
@@ -172,7 +173,7 @@ class KWatchChannel(
 }
 
 /**
- * Wrapper around WatchEvent that comes with properly resolved absolute path
+ * Wrapper around [WatchEvent] that comes with properly resolved absolute path
  */
 data class KWatchEvent(
     /**
@@ -188,14 +189,14 @@ data class KWatchEvent(
     /**
      * Optional extra data that should be associated with this event
      */
-    val data: Any?
+    val tag: Any?
 ) {
     /**
-     * File system event, wrapper around WatchEvent.Kind
+     * File system event, wrapper around [WatchEvent.Kind]
      */
     sealed class Kind(private val name: String) {
         /**
-         * Triggered upon initalization of the channel
+         * Triggered upon initialization of the channel
          */
         object Initalized : Kind("initalized")
 
