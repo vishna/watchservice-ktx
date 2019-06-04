@@ -24,7 +24,7 @@ class WatchServiceTests {
             launch {
                 watchChannel.consumeEach { event ->
                     // there is always the first event triggered and here we only test that
-                    event.kind `should be` KWatchEvent.Kind.Initalized
+                    event.kind `should be` KWatchEvent.Kind.Initialized
                     event.file.absolutePath `should be equal to` currentDirectory.absolutePath
                 }
             }

@@ -85,7 +85,7 @@ class KWatchChannel(
                 KWatchEvent(
                     file = path.toFile(),
                     tag = tag,
-                    kind = KWatchEvent.Kind.Initalized
+                    kind = KWatchEvent.Kind.Initialized
                 ))
 
             var shouldRegisterPath = true
@@ -153,22 +153,22 @@ class KWatchChannel(
     /**
      * Describes the mode this channels is running in
      */
-    sealed class Mode {
+    enum class Mode {
         /**
          * Watches only the given file
          */
-        object SingleFile : Mode()
+        SingleFile,
 
         /**
          * Watches changes in the given directory, changes in subdirectories will be
          * ignored
          */
-        object SingleDirectory : Mode()
+        SingleDirectory,
 
         /**
          * Watches changes in subdirectories
          */
-        object Recursive : Mode()
+        Recursive
     }
 }
 
@@ -194,27 +194,25 @@ data class KWatchEvent(
     /**
      * File system event, wrapper around [WatchEvent.Kind]
      */
-    sealed class Kind(private val name: String) {
+    enum class Kind(val kind: String) {
         /**
          * Triggered upon initialization of the channel
          */
-        object Initalized : Kind("initalized")
+        Initialized("initialized"),
 
         /**
          * Triggered when file or directory is created
          */
-        object Created : Kind("created")
+        Created("created"),
 
         /**
          * Triggered when file or directory is modified
          */
-        object Modified : Kind("modified")
+        Modified("modified"),
 
         /**
          * Triggered when file or directory is deleted
          */
-        object Deleted : Kind("deleted")
-
-        override fun toString(): String = name
+        Deleted("deleted")
     }
 }
