@@ -37,4 +37,4 @@ launch {
 watchChannel.close()
 ```
 
-For more documentation on API see [watchservice.kt](https://github.com/vishna/watchservice-ktx/blob/master/src/main/kotlin/dev/vishna/watchservice/watchservice.kt)
+For more documentation on API see [watchservice.kt](https://github.com/vishna/watchservice-ktx/blob/master/src/main/kotlin/dev/vishna/watchservice/watchservice.kt) or check out the [medium article](https://medium.com/@vishna/kotlin-watchservice-a-better-file-watcher-using-channels-coroutines-and-sealed-classes-7ab5c9df3ada)
