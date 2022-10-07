@@ -1,27 +1,32 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
-    kotlin("jvm") version "1.3.31"
-    maven
+    kotlin("jvm") version "1.6.10"
 }
 
 group = "dev.vishna"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.1-SNAPSHOT"
 
 repositories {
     mavenCentral()
-    jcenter()
 }
 
 dependencies {
-    compile(kotlin("stdlib-jdk8"))
-    compile("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.2.1")
-    compile("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.2.1")
+    implementation(kotlin("stdlib-jdk8"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.4")
 
-    testCompile("junit", "junit", "4.12")
-    testCompile("org.amshove.kluent:kluent:1.34")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.0")
+    testImplementation("org.testfx:testfx-core:4.0.16-alpha")
+    testImplementation("org.testfx:testfx-junit5:4.0.16-alpha")
+    testImplementation("org.hamcrest:hamcrest:2.2")
+    testImplementation("org.awaitility:awaitility-kotlin:4.2.0")
+    testImplementation("io.mockk:mockk:1.13.2")
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+
+
+tasks.test {
+    useJUnitPlatform()
 }
