@@ -38,13 +38,15 @@ fun File.asWatchChannel(
  * @param [mode] - channel can work in one of the three modes: watching a single file,
  * watching a single directory or watching directory tree recursively
  * @param [tag] - any kind of data that should be associated with this channel, optional
+ * @param [dispatcher] - dispatcher for watching the file system events. Defaults to [Dispatchers.IO]
  */
 class KWatchChannel(
     val file: File,
     val scope: CoroutineScope = GlobalScope,
     val mode: Mode,
     val tag: Any? = null,
-    private val channel: Channel<KWatchEvent> = Channel()
+    private val channel: Channel<KWatchEvent> = Channel(),
+    dispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : Channel<KWatchEvent> by channel {
 
     private val watchService: WatchService = FileSystems.getDefault().newWatchService()
@@ -78,7 +80,7 @@ class KWatchChannel(
 
     init {
         // commence emitting events from channel
-        scope.launch(Dispatchers.IO) {
+        scope.launch(dispatcher) {
 
             // sending channel initalization event
             channel.send(
